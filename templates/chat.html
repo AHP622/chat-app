@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+    <meta charset="UTF-8">
+    <title>چت</title>
+    <script src="https://cdn.socket.io/4.3.2/socket.io.min.js"></script>
+    <style>
+        #messages { border: 1px solid #ccc; height: 300px; overflow-y: scroll; padding: 10px; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <h3>سلام {{ name }}! 👋</h3>
+
+    <div id="messages"></div>
+
+    <input id="message" type="text" placeholder="پیام...">
+    <button onclick="sendMessage()">ارسال</button>
+
+    <br><br>
+
+    <form id="uploadForm" enctype="multipart/form-data">
+        <input type="file" name="file" id="fileInput">
+        <button type="submit">ارسال فایل</button>
+    </form>
+
+    <script>
+        const socket = io();
+
+        socket.on('message', function(msg) {
+            const div = document.getElementById("messages");
+            div.innerHTML += '<div>' + msg + '</div>';
+            div.scrollTop = div.scrollHeight;
+        });
+
+        function sendMessage() {
+            const msg = document.getElementById("message").value;
+            if (msg.trim()) {
+                socket.send("<b>{{ name }}:</b> " + msg);
+                document.getElementById("message").value = "";
+            }
+        }
+
+        document.getElementById('uploadForm').onsubmit = async function(e) {
+            e.preventDefault();
+            const fileInput = document.getElementById("fileInput");
+            const formData = new FormData();
+            formData.append("file", fileInput.files[0]);
+
+            const res = await fetch("/upload", {
+                method: "POST",
+                body: formData
+            });
+
+            const data = await res.json();
+            const filename = data.filename;
+
+            let content = "";
+            if (filename.match(/\.(jpg|jpeg|png|gif)$/i)) {
+                content = `<img src="/uploads/${filename}" width="200">`;
+            } else if (filename.match(/\.(mp4|webm)$/i)) {
+                content = `<video src="/uploads/${filename}" controls width="300"></video>`;
+            } else {
+                content = `<a href="/uploads/${filename}" target="_blank">${filename}</a>`;
+            }
+
+            socket.send("<b>{{ name }}:</b> " + content);
+        };
+    </script>
+</body>
+</html>
